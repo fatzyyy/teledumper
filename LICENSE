@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2024 fatzyyy
+Copyright (c) 2024 Leonid Akinin <fatzy@protonmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Acknowledgement:
+This software was originally developed by Leonid Akinin <fatzy@protonmail.com>. Any use or redistribution of this software must include an acknowledgment to the original author, including a link to the original repository.
