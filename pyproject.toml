@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telegram-file-exporter"
-version = "0.1.0"
+version = "1.0.0"
 description = "A CLI tool to export document files from a Telegram channel."
 authors = [
     { name = "Leonid Akinin", email = "fatzy@protonmail.com" }
