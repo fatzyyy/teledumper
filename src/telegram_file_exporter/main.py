@@ -25,9 +25,8 @@ async def export_documents(
         print("Client initialized. Getting channel entity...")
         try:
             channel = await client.get_entity(channel_name)
-            channel_name = channel.username
-            channel_display = get_display_name(channel)
-            print(f"Channel found: {channel_name}/{channel_display}")
+            channel_display_name = get_display_name(channel)
+            print(f"Channel found: {channel_display_name}")
 
             # If in download mode, set output file in download directory
             if mode == "download" and output:
@@ -46,45 +45,59 @@ async def export_documents(
                 messages_processed += 1
 
                 if message.media and isinstance(message.media, MessageMediaDocument):
-                    file_name = message.media.document.attributes[-1].file_name
-                    file_id = message.media.document.id
-                    date_posted = message.date.strftime("%Y-%m-%d %H:%M:%S")
-                    date_posted_yyyymmdd = message.date.strftime("%Y%m%d")
-                    combined_name = f"{date_posted_yyyymmdd}-{file_name}"
+                    try:
+                        file_name = None
+                        for attr in message.media.document.attributes:
+                            if hasattr(attr, "file_name"):
+                                file_name = attr.file_name.strip("'")
+                                break
 
-                    # Generate the post URL
-                    if hasattr(channel, "username") and channel_name:
-                        post_url = f"https://t.me/{channel_name}/{message.id}"
-                    else:
-                        channel_id = abs(
-                            channel.id
-                        )  # Convert to positive if it's negative
-                        post_url = f"https://t.me/c/{channel_id}/{message.id}"
+                        if file_name is None:
+                            print("No valid file name found in this message.")
+                            raise AttributeError("Document has no valid file_name")
 
-                    print(f"Processing: {combined_name}, Post URL: {post_url}")
+                        file_id = message.media.document.id
+                        date_posted = message.date.strftime("%Y-%m-%d %H:%M:%S")
+                        date_posted_yyyymmdd = message.date.strftime("%Y%m%d")
+                        combined_name = f"{date_posted_yyyymmdd}-{file_name}"
 
-                    # Check if file already exists
-                    file_exists = False
-                    if mode == "download":
-                        file_path = os.path.join(download_dir, combined_name)
-                        if os.path.exists(file_path):
-                            print(f"File already exists: {file_path}")
-                            file_exists = True
-                            files_existed += 1
+                        # Generate the post URL
+                        if hasattr(channel, "username") and channel.username:
+                            post_url = f"https://t.me/{channel.username}/{message.id}"
+                        else:
+                            channel_id = abs(
+                                channel.id
+                            )  # Convert to positive if it's negative
+                            post_url = f"https://t.me/c/{channel_id}/{message.id}"
 
-                    message_data = {
-                        "File Name": file_name,
-                        "File ID": file_id,
-                        "Date Posted": date_posted,
-                        "Combined Name": combined_name,
-                        "Post URL": post_url,
-                    }
-                    channel_data.append(message_data)
+                        print(f"Processing: {combined_name}, Post URL: {post_url}")
 
-                    if mode == "download" and not file_exists:
-                        print(f"Downloading file to: {file_path}")
-                        await client.download_media(message.media, file_path)
-                        files_downloaded += 1
+                        # Check if file already exists
+                        file_exists = False
+                        if mode == "download":
+                            file_path = os.path.join(download_dir, combined_name)
+                            if os.path.exists(file_path):
+                                print(f"File already exists: {file_path}")
+                                file_exists = True
+                                files_existed += 1
+
+                        message_data = {
+                            "File Name": file_name,
+                            "File ID": file_id,
+                            "Date Posted": date_posted,
+                            "Combined Name": combined_name,
+                            "Post URL": post_url,
+                        }
+                        channel_data.append(message_data)
+
+                        if mode == "download" and not file_exists:
+                            print(f"Downloading file to: {file_path}")
+                            await client.download_media(message.media, file_path)
+                            files_downloaded += 1
+
+                    except Exception as e:
+                        print(f"An error occurred while processing a message: {e}")
+                        continue
 
                 else:
                     print("No file attached to this message.")
@@ -109,7 +122,7 @@ async def export_documents(
                     break
 
             if output:
-                output_data = {channel_display: channel_data}
+                output_data = {channel_display_name: channel_data}
                 with open(output_file, "w") as jsonfile:
                     json.dump(output_data, jsonfile, indent=4)
 
