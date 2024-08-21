@@ -1,6 +1,6 @@
 import argparse
 import asyncio
-import csv
+import json
 import random
 import time
 import os
@@ -25,8 +25,9 @@ async def export_documents(
         print("Client initialized. Getting channel entity...")
         try:
             channel = await client.get_entity(channel_name)
-            channel_display_name = get_display_name(channel)
-            print(f"Channel found: {channel_display_name}")
+            channel_name = channel.username
+            channel_display = get_display_name(channel)
+            print(f"Channel found: {channel_name}/{channel_display}")
 
             # If in download mode, set output file in download directory
             if mode == "download" and output:
@@ -36,93 +37,83 @@ async def export_documents(
 
             files_downloaded = 0
             files_existed = 0
-            msgs_processed = 0
+            messages_processed = 0
+
+            channel_data = []
+
+            print("Fetching messages...")
+            async for message in client.iter_messages(channel, limit=max_limit):
+                messages_processed += 1
+
+                if message.media and isinstance(message.media, MessageMediaDocument):
+                    file_name = message.media.document.attributes[-1].file_name
+                    file_id = message.media.document.id
+                    date_posted = message.date.strftime("%Y-%m-%d %H:%M:%S")
+                    date_posted_yyyymmdd = message.date.strftime("%Y%m%d")
+                    combined_name = f"{date_posted_yyyymmdd}-{file_name}"
+
+                    # Generate the post URL
+                    if hasattr(channel, "username") and channel_name:
+                        post_url = f"https://t.me/{channel_name}/{message.id}"
+                    else:
+                        channel_id = abs(
+                            channel.id
+                        )  # Convert to positive if it's negative
+                        post_url = f"https://t.me/c/{channel_id}/{message.id}"
+
+                    print(f"Processing: {combined_name}, Post URL: {post_url}")
+
+                    # Check if file already exists
+                    file_exists = False
+                    if mode == "download":
+                        file_path = os.path.join(download_dir, combined_name)
+                        if os.path.exists(file_path):
+                            print(f"File already exists: {file_path}")
+                            file_exists = True
+                            files_existed += 1
+
+                    message_data = {
+                        "File Name": file_name,
+                        "File ID": file_id,
+                        "Date Posted": date_posted,
+                        "Combined Name": combined_name,
+                        "Post URL": post_url,
+                    }
+                    channel_data.append(message_data)
+
+                    if mode == "download" and not file_exists:
+                        print(f"Downloading file to: {file_path}")
+                        await client.download_media(message.media, file_path)
+                        files_downloaded += 1
+
+                else:
+                    print("No file attached to this message.")
+                    message_data = {
+                        "File Name": "No file attached",
+                        "File ID": "",
+                        "Date Posted": message.date.strftime("%Y-%m-%d %H:%M:%S"),
+                        "Combined Name": "No file attached",
+                        "Post URL": (
+                            f"https://t.me/c/{abs(channel.id)}/{message.id}"
+                            if not channel.username
+                            else f"https://t.me/{channel.username}/{message.id}"
+                        ),
+                    }
+                    channel_data.append(message_data)
+
+                # Jittering: random delay between 1 to 3 seconds
+                delay = random.uniform(1, 3)
+                time.sleep(delay)
+
+                if messages_processed >= max_limit:
+                    break
 
             if output:
-                with open(output_file, "w", newline="") as csvfile:
-                    fieldnames = [
-                        "File Name",
-                        "File ID",
-                        "Date Posted",
-                        "Combined Name",
-                        "Post URL",
-                    ]
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                    writer.writeheader()
+                output_data = {channel_display: channel_data}
+                with open(output_file, "w") as jsonfile:
+                    json.dump(output_data, jsonfile, indent=4)
 
-                    # Iterating through the messages in the channel
-                    print("Fetching messages...")
-                    async for msg in client.iter_messages(channel, limit=max_limit):
-                        msgs_processed += 1
-
-                        if msg.media and isinstance(msg.media, MessageMediaDocument):
-                            file_name = msg.media.document.attributes[-1].file_name
-                            file_id = msg.media.document.id
-                            date_posted = msg.date.strftime("%Y-%m-%d %H:%M:%S")
-                            date_posted_yyyymmdd = msg.date.strftime("%Y%m%d")
-                            combined_name = f"{date_posted_yyyymmdd}-{file_name}"
-
-                            # Generate the post URL
-                            if hasattr(channel, "username") and channel.username:
-                                post_url = f"https://t.me/{channel.username}/{msg.id}"
-                            else:
-                                channel_id = abs(
-                                    channel.id
-                                )  # Convert to positive if it's negative
-                                post_url = f"https://t.me/c/{channel_id}/{msg.id}"
-
-                            print(f"Processing: {combined_name}, Post URL: {post_url}")
-
-                            # Check if file already exists
-                            file_exists = False
-                            if mode == "download":
-                                file_path = os.path.join(download_dir, combined_name)
-                                if os.path.exists(file_path):
-                                    print(f"File already exists: {file_path}")
-                                    file_exists = True
-                                    files_existed += 1
-
-                            writer.writerow(
-                                {
-                                    "File Name": file_name,
-                                    "File ID": file_id,
-                                    "Date Posted": date_posted,
-                                    "Combined Name": combined_name,
-                                    "Post URL": post_url,
-                                }
-                            )
-
-                            if mode == "download" and not file_exists:
-                                print(f"Downloading file to: {file_path}")
-                                await client.download_media(msg.media, file_path)
-                                files_downloaded += 1
-
-                        else:
-                            print("No file attached to this msg.")
-                            writer.writerow(
-                                {
-                                    "File Name": "No file attached",
-                                    "File ID": "",
-                                    "Date Posted": msg.date.strftime(
-                                        "%Y-%m-%d %H:%M:%S"
-                                    ),
-                                    "Combined Name": "No file attached",
-                                    "Post URL": (
-                                        f"https://t.me/c/{abs(channel.id)}/{msg.id}"
-                                        if not channel.username
-                                        else f"https://t.me/{channel.username}/{msg.id}"
-                                    ),
-                                }
-                            )
-
-                        # Jittering: random delay between 1 to 3 seconds
-                        delay = random.uniform(1, 3)
-                        time.sleep(delay)
-
-                        if msgs_processed >= max_limit:
-                            break
-
-                print(f"Export completed. Document files listed in {output_file}.")
+                print(f"Export completed. Data stored in {output_file}.")
                 print(f"Files downloaded/existed: {files_downloaded}/{files_existed}.")
 
         except Exception as e:
@@ -153,7 +144,7 @@ def cli():
         "-o",
         "--output",
         action="store_true",
-        help="Boolean flag to output CSV file. Defaults to True.",
+        help="Boolean flag to output JSON file. Defaults to True.",
         default=True,
     )
     parser.add_argument(
@@ -161,7 +152,7 @@ def cli():
         "--max",
         type=int,
         default=100,
-        help="Max number of channel msgs to process.",
+        help="Max number of channel messages to process.",
     )
     parser.add_argument(
         "--mode",
@@ -186,7 +177,7 @@ def main():
     if cli_args.output:
         timestamp = datetime.now().strftime("%Y%m%d")
         channel_name_sanitized = cli_args.channel.replace("@", "").replace("/", "_")
-        output_filename = f"{timestamp}-{channel_name_sanitized}.csv"
+        output_filename = f"{timestamp}-{channel_name_sanitized}.json"
     else:
         output_filename = None
 
