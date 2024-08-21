@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telegram-file-exporter"
+version = "0.1.0"
+description = "A CLI tool to export document files from a Telegram channel."
+authors = [
+    { name = "Leonid Akinin", email = "fatzy@protonmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["telegram", "export", "cli", "file"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "telethon>=1.24.0"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/fatzyyy/telegram-file-exporter"
+"Source" = "https://github.com/fatzyyy/telegram-file-exporter"
+
+[project.scripts]
+telegram-file-exporter = "telegram_file_exporter.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
