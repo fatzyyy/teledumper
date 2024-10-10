@@ -9,6 +9,14 @@ from telethon import TelegramClient
 from telethon.tl.types import MessageMediaDocument
 from telethon.utils import get_display_name
 
+
+# ANSI escape sequences for colored text
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RST = "\033[0m"
+
+
 # Define default allowed extensions and size limit
 DEFAULT_ALLOWED_EXTENSIONS = {
     ".zip",
@@ -115,7 +123,7 @@ def get_post_url(channel, message):
 
 
 async def process_message(
-    client, message, channel, allowed_extensions, size_limit_mb, download_dir, mode
+    client, message, channel, allowed_extensions, maxsize_mb, download_dir, mode
 ):
     """
     Process each message to extract and possibly download multiple files.
@@ -125,7 +133,7 @@ async def process_message(
         message (telethon.tl.custom.message.Message): The message to process.
         channel (telethon.tl.custom.channel.Channel): The Telegram channel.
         allowed_extensions (set): Set of allowed file extensions.
-        size_limit_mb (int): Maximum file size allowed in MB.
+        maxsize_mb (int): Maximum file size allowed in MB.
         download_dir (str): Directory to download files to.
         mode (str): Mode of operation ('list' or 'download').
 
@@ -133,10 +141,10 @@ async def process_message(
         list[dict]: A list of processed file data.
     """
     msg_id = message.id
-    print(f"Processing message ID: {msg_id}")
+    print(f"{GREEN}Processing message ID: {msg_id}{RST}")
 
     if not message.media or not isinstance(message.media, MessageMediaDocument):
-        print(f"No media found in message ID: {msg_id}")
+        print(f"{YELLOW}No media found in message ID: {msg_id}{RST}")
         return []
 
     # Process all files (in case there are multiple documents)
@@ -155,19 +163,19 @@ async def process_message(
             None,
         )
         if not file_name:
-            print(f"File name missing in message ID: {msg_id}")
+            print(f"{YELLOW}File name missing in message ID: {msg_id}{RST}")
             continue
 
         # Check file extension
         file_ext = os.path.splitext(file_name)[-1].lower()
         if file_ext not in (ext.lower() for ext in allowed_extensions):
-            print(f"{file_name} extension {file_ext} not allowed")
+            print(f"{YELLOW}{file_name} extension {file_ext} not allowed{RST}")
             continue  # Skip file if the extension is not allowed
 
         # Check file size
-        file_size_mb = doc.document.size / (1024 * 1024)
-        if file_size_mb > size_limit_mb:
-            print(f"Skipping {file_name} size {file_size_mb} MB exceeds limit")
+        fsize_mb = doc.document.size / (1024 * 1024)
+        if fsize_mb > maxsize_mb:
+            print(f"{YELLOW}Skipping {file_name} {fsize_mb} MB exceeds limit{RST}")
             continue  # Skip file if it exceeds the size limit
 
         combined_name = sanitize_filename(message, file_name)
@@ -178,17 +186,17 @@ async def process_message(
         if mode == "download":
             file_path = os.path.join(download_dir, combined_name)
             if os.path.exists(file_path):
-                print(f"File {file_name} already exists at {file_path}")
+                print(f"{YELLOW}File {file_name} already exists at {file_path}{RST}")
                 file_exists = True
 
-        print(f"File {file_name} ready to be processed/downloaded")
+        print(f"{GREEN}File {file_name} ready to be processed/downloaded{RST}")
 
         file_data = {
             "file_name": file_name,
             "file_path": file_path,
             "post_url": post_url,
             "file_exists": file_exists,
-            "file_size_mb": file_size_mb,
+            "fsize_mb": fsize_mb,
         }
         files_data.append(file_data)
 
@@ -204,7 +212,7 @@ async def export_documents(
     mode,
     output,
     download_dir=None,
-    size_limit_mb=DEFAULT_SIZE_LIMIT_MB,
+    maxsize_mb=DEFAULT_SIZE_LIMIT_MB,
     allowed_extensions=None,
 ):
     """
@@ -219,38 +227,38 @@ async def export_documents(
         mode (str): Mode of operation ('list' or 'download').
         output (bool): Whether to output a JSON file.
         download_dir (str): Directory to download files to.
-        size_limit_mb (int): Max file size to download in MB.
+        maxsize_mb (int): Max file size to download in MB.
         allowed_extensions (set): Set of allowed file extensions.
     """
     allowed_extensions = allowed_extensions or DEFAULT_ALLOWED_EXTENSIONS
     download_dir = download_dir or os.getcwd()
 
-    print(f"Allowed extensions: {allowed_extensions}")
-    print(f"Size limit: {size_limit_mb} MB")
-    print(f"Mode: {mode}")
-    print(f"Download directory: {download_dir}")
+    print(f"{GREEN}Allowed extensions: {allowed_extensions}{RST}")
+    print(f"{GREEN}Size limit: {maxsize_mb} MB{RST}")
+    print(f"{GREEN}Mode: {mode}{RST}")
+    print(f"{GREEN}Download directory: {download_dir}{RST}")
 
-    print("Initializing Telegram client...")
+    print(f"{GREEN}Initializing Telegram client...{RST}")
     async with TelegramClient("session_name", api_id, api_hash) as client:
         try:
             channel = await client.get_entity(channel_name)
-            print(f"Channel found: {get_display_name(channel)}")
+            print(f"{GREEN}Channel found: {get_display_name(channel)}{RST}")
 
-            files_downloaded, files_existed, msgs_processed = 0, 0, 0
+            files_downloaded, files_existed, processed = 0, 0, 0
             channel_data = []
 
-            print(f"Fetching up to {max_limit} messages from {channel_name}...")
+            print(f"{GREEN}Processing {max_limit} messages from {channel_name}...{RST}")
             async for message in client.iter_messages(channel, limit=max_limit):
-                msgs_processed += 1
+                processed += 1
                 msg_id = message.id
-                print(f"Processing message {msgs_processed}/{max_limit} (ID: {msg_id})")
+                print(f"{GREEN}Processing {processed}/{max_limit} (ID: {msg_id}){RST}")
                 # Process the message and return a list of files
                 files_data = await process_message(
                     client,
                     message,
                     channel,
                     allowed_extensions,
-                    size_limit_mb,
+                    maxsize_mb,
                     download_dir,
                     mode,
                 )
@@ -269,29 +277,29 @@ async def export_documents(
                     channel_data.append(message_data)
 
                     if mode == "download" and not file_data["file_exists"]:
-                        print(f"Downloading file {file_name} to {file_path}")
+                        print(f"{GREEN}Downloading {file_name} to {file_path}{RST}")
                         await client.download_media(message.media, file_path)
                         files_downloaded += 1
                     elif file_data["file_exists"]:
                         files_existed += 1
 
                 delay = random.uniform(1, 3)
-                print(f"Sleeping for {delay:.2f} seconds...")
+                print(f"{GREEN}Sleeping for {delay:.2f} seconds...{RST}")
                 time.sleep(delay)
 
-                if msgs_processed >= max_limit:
+                if processed >= max_limit:
                     break
 
             if output:
-                print(f"Writing output to {output_file}...")
+                print(f"{GREEN}Writing output to {output_file}...{RST}")
                 with open(output_file, "w") as jsonfile:
                     json.dump(
                         {get_display_name(channel): channel_data}, jsonfile, indent=4
                     )
-                print(f"Export completed. Data stored in {output_file}.")
+                print(f"{GREEN}Completed, stored in {output_file}.{RST}")
 
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"{RED}An error occurred: {e}{RST}")
 
 
 def main():
@@ -306,7 +314,7 @@ def main():
         channel_name_sanitized = args.channel.replace("@", "").replace("/", "_")
         output_filename = f"{timestamp}-{channel_name_sanitized}.json"
 
-    print("Starting the export process...")
+    print(f"{GREEN}Starting the export process...{RST}")
     asyncio.run(
         export_documents(
             args.api_id,
@@ -321,7 +329,7 @@ def main():
             args.extensions,
         )
     )
-    print("Export process finished!")
+    print(f"{GREEN}Export process finished!{RST}")
 
 
 if __name__ == "__main__":

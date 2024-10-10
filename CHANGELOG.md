@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added detailed debug messages for extension handling and file processing.
 - Normalization of allowed extensions to lowercase.
 - Improved file extension comparison logic to ensure correct processing.
+- Colors added to terminal output for better readability.
 
 ### Fixed
 
