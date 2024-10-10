@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed an issue where files with valid extensions (like `.zip`) were not being downloaded.
 - Correct handling of user-specified file extensions with case insensitivity.
 - Improved error handling for missing file names and unsupported media types.
 
