@@ -1,5 +1,4 @@
 import argparse
-import asyncio
 import json
 import random
 import time
@@ -8,6 +7,22 @@ from datetime import datetime
 from telethon import TelegramClient
 from telethon.tl.types import MessageMediaDocument
 from telethon.utils import get_display_name
+
+# Define allowed extensions and size limit
+ALLOWED_EXTENSIONS = {
+    ".zip",
+    ".tar",
+    ".gz",
+    ".7z",
+    ".rar",
+    ".xls",
+    ".xlsx",
+    ".csv",
+    ".txt",
+    ".doc",
+    ".docx",
+}
+DEFAULT_SIZE_LIMIT_MB = 3 * 1024
 
 
 async def export_documents(
@@ -19,6 +34,7 @@ async def export_documents(
     mode,
     output,
     download_dir=None,
+    size_limit_mb=DEFAULT_SIZE_LIMIT_MB,
 ):
     print("Initializing Telegram client...")
     async with TelegramClient("session_name", api_id, api_hash) as client:
@@ -28,7 +44,6 @@ async def export_documents(
             channel_display_name = get_display_name(channel)
             print(f"Channel found: {channel_display_name}")
 
-            # If in download mode, set output file in download directory
             if mode == "download" and output:
                 if not download_dir:
                     download_dir = os.getcwd()
@@ -49,14 +64,25 @@ async def export_documents(
                         file_name = None
                         for attr in message.media.document.attributes:
                             if hasattr(attr, "file_name"):
-                                file_name = attr.file_name.strip("'")
+                                file_name = attr.file_name.strip("")
                                 break
 
                         if file_name is None:
                             print("No valid file name found in this message.")
                             raise AttributeError("Document has no valid file_name")
 
+                        # Check if the file extension is allowed
+                        file_ext = os.path.splitext(file_name)[-1].lower()
+                        if file_ext not in ALLOWED_EXTENSIONS:
+                            print(f"File {file_name} skipped (extension not allowed).")
+                            continue
+
                         file_id = message.media.document.id
+                        file_size_mb = message.media.document.size / (1024 * 1024)
+                        if file_size_mb > size_limit_mb:
+                            print(f"{file_name} size {file_size_mb} MB exceeds limit")
+                            continue
+
                         date_posted = message.date.strftime("%Y-%m-%d %H:%M:%S")
                         date_posted_yyyymmdd = message.date.strftime("%Y%m%d")
                         combined_name = f"{date_posted_yyyymmdd}-{file_name}"
@@ -67,7 +93,7 @@ async def export_documents(
                         else:
                             channel_id = abs(
                                 channel.id
-                            )  # Convert to positive if it's negative
+                            )  # Convert to positive if it"s negative
                             post_url = f"https://t.me/c/{channel_id}/{message.id}"
 
                         print(f"Processing: {combined_name}, Post URL: {post_url}")
@@ -123,7 +149,7 @@ async def export_documents(
 
             if output:
                 output_data = {channel_display_name: channel_data}
-                with open(output_file, "w") as jsonfile:
+                with open(output_file, "w", encoding="utf8") as jsonfile:
                     json.dump(output_data, jsonfile, indent=4)
 
                 print(f"Export completed. Data stored in {output_file}.")
@@ -178,6 +204,12 @@ def cli():
         type=str,
         help="Directory to download files to. Defaults to current directory.",
     )
+    parser.add_argument(
+        "--size-limit",
+        type=int,
+        default=DEFAULT_SIZE_LIMIT_MB,
+        help="Size limit for downloadable files in megabytes.",
+    )
 
     args = parser.parse_args()
     return args
@@ -189,24 +221,5 @@ def main():
     # Create a timestamp for the output file
     if cli_args.output:
         timestamp = datetime.now().strftime("%Y%m%d")
-        channel_name_sanitized = cli_args.channel.replace("@", "").replace("/", "_")
-        output_filename = f"{timestamp}-{channel_name_sanitized}.json"
-    else:
-        output_filename = None
-
-    asyncio.run(
-        export_documents(
-            cli_args.api_id,
-            cli_args.api_hash,
-            cli_args.channel,
-            output_filename,
-            cli_args.max,
-            cli_args.mode,
-            cli_args.output,
-            cli_args.download_dir,
-        )
-    )
-
-
-if __name__ == "__main__":
-    main()
+        channel_name_sanitized = cli_args.c
+        print(timestamp, channel_name_sanitized)
