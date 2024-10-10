@@ -98,7 +98,7 @@ async def process_message(
 ):
     """Process each message to extract and possibly download files"""
     if not message.media or not isinstance(message.media, MessageMediaDocument):
-        return None, None, "No file attached"
+        return None, None, None, None  # Return 4 values even if some are None
 
     file_name = next(
         (
@@ -109,21 +109,17 @@ async def process_message(
         None,
     )
     if not file_name:
-        return None, None, "No valid file_name"
+        return None, None, None, None  # Return 4 values even if some are None
 
     # Check file extension
     file_ext = os.path.splitext(file_name)[-1].lower()
     if file_ext not in allowed_extensions:
-        return None, None, f"File {file_name} skipped (extension not allowed)"
+        return None, None, None, None  # Skip if extension not allowed
 
     # Check file size
     file_size_mb = message.media.document.size / (1024 * 1024)
     if file_size_mb > size_limit_mb:
-        return (
-            None,
-            None,
-            f"File {file_name} skipped (size {file_size_mb:.2f} MB exceeds limit)",
-        )
+        return None, None, None, None  # Skip if size exceeds limit
 
     combined_name = sanitize_filename(message, file_name)
     post_url = get_post_url(channel, message)
