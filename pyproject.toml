@@ -3,9 +3,9 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "telegram-file-exporter"
-version = "1.2.0"
-description = "A CLI tool to export document files from a Telegram channel."
+name = "teledumper"
+version = "1.3.0"
+description = "OSINT-tailored, specialised, message/files exporter for Telegram."
 authors = [
     { name = "Leonid Akinin", email = "fatzy@protonmail.com" }
 ]
@@ -23,11 +23,11 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/fatzyyy/telegram-file-exporter"
-"Source" = "https://github.com/fatzyyy/telegram-file-exporter"
+"Homepage" = "https://github.com/fatzyyy/teledumper"
+"Source" = "https://github.com/fatzyyy/teledumper"
 
 [project.scripts]
-telegram-file-exporter = "telegram_file_exporter.main:main"
+telegram-file-exporter = "teledumper.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

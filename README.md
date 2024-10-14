@@ -1,7 +1,6 @@
-# Telegram File Exporter
+# Teledumper
 
-Telegram File Exporter is a CLI tool for exporting a list of document files from a Telegram channel.
-It supports listing files, downloading them, and outputting the results to a JSON file.
+Teledumper is a specialized, OSINT-talored tool for exporting messages and files from Telegram channels.
 
 ## Features
 
@@ -15,7 +14,7 @@ It supports listing files, downloading them, and outputting the results to a JSO
 First, clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/telegram-file-exporter.git
+git clone https://github.com/yourusername/teledumper.git
 cd telegram-file-exporter
 pip install .
 ```
@@ -40,10 +39,10 @@ telegram-file-exporter --api-id <your_api_id> --api-hash <your_api_hash> --chann
 
 ```bash
 # List Files in a Channel
-telegram-file-exporter --api-id 12345 --api-hash abcdef --channel @mychannel --mode list -m 100
+teledumper --api-id 12345 --api-hash abcdef --channel @mychannel --mode list -m 100
 
 # Download Files from a Channel
-telegram-file-exporter --api-id 12345 --api-hash abcdef --channel @mychannel --mode download --download-dir ./downloads -m 100
+teledumper --api-id 12345 --api-hash abcdef --channel @mychannel --mode download --download-dir ./downloads -m 100
 ```
 
 ## Requirements
